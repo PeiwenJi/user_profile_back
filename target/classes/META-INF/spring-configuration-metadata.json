@@ -1,0 +1,17 @@
+{
+  "hints": [],
+  "groups": [
+    {
+      "sourceType": "bigdata.com.config.HbaseProperties",
+      "name": "hbase",
+      "type": "bigdata.com.config.HbaseProperties"
+    }
+  ],
+  "properties": [
+    {
+      "sourceType": "bigdata.com.config.HbaseProperties",
+      "name": "hbase.config",
+      "type": "java.util.Map<java.lang.String,java.lang.String>"
+    }
+  ]
+}
