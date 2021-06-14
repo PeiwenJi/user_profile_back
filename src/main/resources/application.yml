@@ -4,3 +4,6 @@ hbase:
     hbase.zookeeper.port: 8020
     hbase.zookeeper.znode: /hbase
     hbase.client.keyvalue.maxsize: 1572864000
+
+server:
+  port: 9000
