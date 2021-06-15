@@ -5,6 +5,8 @@ import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.TableExistsException;
 import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.*;
+
+import org.apache.hadoop.hbase.filter.*;
 import org.apache.hadoop.hbase.util.Bytes;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Component;
@@ -60,6 +62,7 @@ public class HBaseClient {
         this.insertOrUpdate(tableName, rowKey, columnFamily, new String[]{column}, new String[]{value});
     }
 
+    //修改用户信息
     public void insertOrUpdate(String tableName, String rowKey, String columnFamily, String[] columns, String[] values)
             throws IOException {
         Table table = connection.getTable(TableName.valueOf(tableName));
@@ -70,6 +73,7 @@ public class HBaseClient {
         }
     }
 
+    //删除指定行
     public void deleteRow(String tableName, String rowKey) throws IOException {
         Table table = connection.getTable(TableName.valueOf(tableName));
         Delete delete = new Delete(rowKey.getBytes());
@@ -89,17 +93,6 @@ public class HBaseClient {
         delete.addColumn(Bytes.toBytes(columnFamily), Bytes.toBytes(column));
         table.delete(delete);
     }
-
-    public void deleteTable(String tableName) throws IOException {
-        boolean isExists = this.tableExists(tableName);
-        if (!isExists) {
-            return;
-        }
-        TableName name = TableName.valueOf(tableName);
-        admin.disableTable(name);
-        admin.deleteTable(name);
-    }
-
     public String getValue(String tableName, String rowkey, String family, String column) {
         Table table;
         String value = "";
@@ -121,6 +114,56 @@ public class HBaseClient {
             e.printStackTrace();
         }
         return value;
+    }
+
+    public void deleteTable(String tableName) throws IOException {
+        boolean isExists = this.tableExists(tableName);
+        if (!isExists) {
+            return;
+        }
+        TableName name = TableName.valueOf(tableName);
+        admin.disableTable(name);
+        admin.deleteTable(name);
+    }
+
+    //根据指定规则选取用户信息
+
+    public ResultScanner selectUsers(String company,String email) {
+
+        Table table;
+        String tableName="user";
+        ResultScanner rs =null;
+        List<Filter> filters =new ArrayList<>();
+        filters.add(new SingleColumnValueFilter(Bytes.toBytes("basic"),    //family
+                        Bytes.toBytes("identity"),                         //列
+                        CompareFilter.CompareOp.EQUAL,"user".getBytes()));     //值
+        //以公司为检索条件
+        if(company != null && company.length()!=0){
+            filters.add(new SingleColumnValueFilter(Bytes.toBytes("basic"),    //family
+                    Bytes.toBytes("company"),                         //列
+                    CompareFilter.CompareOp.EQUAL,company.getBytes()));     //值
+        }
+        //以邮箱作为检索条件  rowkey
+        if(email != null && email.length()!=0 ){
+            filters.add(new RowFilter(CompareFilter.CompareOp.EQUAL ,
+                    new BinaryComparator(email.getBytes())));     //值
+        }
+
+        FilterList filterList =new FilterList(filters);
+
+        if (StringUtils.isBlank(tableName) ) {
+            return null;
+        }
+        try {
+            table = connection.getTable(TableName.valueOf(tableName));
+            Scan scan = new Scan();
+            scan.setFilter(filterList);
+            rs = table.getScanner(scan);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return rs;
     }
 
     public String selectOneRow(String tableName, String rowKey, String colFamily) throws IOException {

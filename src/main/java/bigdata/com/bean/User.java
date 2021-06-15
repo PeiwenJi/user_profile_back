@@ -8,8 +8,8 @@ public class User {
     private String password;
     private String identity;
 
-    public User(int id, String name, String email, String company, String password, String identity) {
-        this.id = id;
+    public User (String name, String email, String company, String password, String identity) {
+
         this.name = name;
         this.email = email;
         this.company = company;

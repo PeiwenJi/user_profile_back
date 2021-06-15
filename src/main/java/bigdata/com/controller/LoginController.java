@@ -76,7 +76,6 @@ public class LoginController {
                 hBaseClient.insertOrUpdate("user", user.getEmail(), "basic", "company", user.getCompany());
                 hBaseClient.insertOrUpdate("user", user.getEmail(), "basic", "password", user.getPassword());
                 hBaseClient.insertOrUpdate("user", user.getEmail(), "basic", "identity", "user");
-
                 return "success";
             } catch (IOException e) {
                 e.printStackTrace();
