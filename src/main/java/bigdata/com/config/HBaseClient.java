@@ -1,6 +1,9 @@
 package bigdata.com.config;
 
+import bigdata.com.bean.Tag;
+import com.sun.corba.se.impl.logging.IORSystemException;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.net.ntp.TimeStamp;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.TableExistsException;
 import org.apache.hadoop.hbase.TableName;
@@ -16,6 +19,7 @@ import javax.annotation.Resource;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Scanner;
 
 @Component
 @DependsOn("hbaseConfig")
@@ -127,8 +131,7 @@ public class HBaseClient {
     }
 
     //根据指定规则选取用户信息
-
-    public ResultScanner selectUsers(String company,String email) {
+    public ResultScanner selectUsers(String company,String email,String identity) {
 
         Table table;
         String tableName="user";
@@ -136,7 +139,7 @@ public class HBaseClient {
         List<Filter> filters =new ArrayList<>();
         filters.add(new SingleColumnValueFilter(Bytes.toBytes("basic"),    //family
                         Bytes.toBytes("identity"),                         //列
-                        CompareFilter.CompareOp.EQUAL,"user".getBytes()));     //值
+                        CompareFilter.CompareOp.EQUAL,identity.getBytes()));     //值
         //以公司为检索条件
         if(company != null && company.length()!=0){
             filters.add(new SingleColumnValueFilter(Bytes.toBytes("basic"),    //family
@@ -152,6 +155,7 @@ public class HBaseClient {
         FilterList filterList =new FilterList(filters);
 
         if (StringUtils.isBlank(tableName) ) {
+
             return null;
         }
         try {
@@ -164,6 +168,86 @@ public class HBaseClient {
             e.printStackTrace();
         }
         return rs;
+    }
+
+    /**
+     * 按照指定规则选取标签
+     */
+    public ResultScanner selectTags(Tag tag){
+        Table table;
+        String tableName="tag";
+        ResultScanner rs =null;
+        List<Filter> filters =new ArrayList<>();
+
+        if(tag.getFirst() != null && tag.getFirst().length()!=0){
+            filters.add(new SingleColumnValueFilter(Bytes.toBytes("basic"),    //family
+                    Bytes.toBytes("first"),                         //列
+                    CompareFilter.CompareOp.EQUAL,tag.getFirst().getBytes()));     //值
+        }
+        if(tag.getSecond() != null && tag.getSecond().length()!=0){
+            filters.add(new SingleColumnValueFilter(Bytes.toBytes("basic"),    //family
+                    Bytes.toBytes("second"),                         //列
+                    CompareFilter.CompareOp.EQUAL,tag.getSecond().getBytes()));     //值
+        }
+        if(tag.getThird() != null && tag.getThird().length()!=0){
+            filters.add(new SingleColumnValueFilter(Bytes.toBytes("basic"),    //family
+                    Bytes.toBytes("third"),                         //列
+                    CompareFilter.CompareOp.EQUAL,tag.getThird().getBytes()));     //值
+        }
+        if(tag.getForth() != null && tag.getForth().length()!=0){
+            filters.add(new SingleColumnValueFilter(Bytes.toBytes("basic"),    //family
+                    Bytes.toBytes("forth"),                         //列
+                    CompareFilter.CompareOp.EQUAL,tag.getForth().getBytes()));     //值
+        }
+        if(tag.getStatus() != null && tag.getStatus().length()!= 0){
+            filters.add(new SingleColumnValueFilter(Bytes.toBytes("basic"),    //family
+                    Bytes.toBytes("status"),                         //列
+                    CompareFilter.CompareOp.EQUAL,tag.getStatus().getBytes()));     //值
+        }
+        FilterList filterList =new FilterList(filters);
+
+        if (StringUtils.isBlank(tableName) ) {
+            return null;
+        }
+        try {
+            table = connection.getTable(TableName.valueOf(tableName));
+            Scan scan = new Scan();
+            scan.setFilter(filterList);
+            rs = table.getScanner(scan);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return rs;
+    }
+    /**
+     * 用于统计每天注册的用户数目
+     * @return ArrayList<ResultScanner>前一天...前10天  截止到当天的用户列表
+     * @throws IOException
+     */
+    public ArrayList<ResultScanner> countUserChanged() throws IOException {
+        Table table = connection.getTable(TableName.valueOf("user"));
+        ResultScanner rs =null;
+        ArrayList<ResultScanner> resultLIst= new ArrayList<>();
+        List<TimestampsFilter> timestampsFilterList =new ArrayList<>();
+        long current =System.currentTimeMillis();
+        for (int i=0;i<11;i++)
+        {
+            List<Long> list = new ArrayList<>();
+            list.add(current-5184000*i);
+            timestampsFilterList.add(new TimestampsFilter(list));
+        }
+        try{
+            Scan scan =new Scan();
+            for(int i =0;i<timestampsFilterList.size();i++)
+            {
+                scan.setFilter(timestampsFilterList.get(i));
+                rs = table.getScanner(scan);
+                resultLIst.add(rs);
+            }
+        }catch (IOException e){
+            e.printStackTrace();
+        }
+        return resultLIst;
     }
 
     public String selectOneRow(String tableName, String rowKey, String colFamily) throws IOException {

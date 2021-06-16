@@ -13,9 +13,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import javax.annotation.Resource;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 @RestController
 public class UserController {
@@ -53,8 +52,10 @@ public class UserController {
 
     //管理员获取用户信息
     @RequestMapping("/showUsers")
-    public ArrayList showUsers(@RequestParam(value = "company",required = false)String company, @RequestParam(value = "email",required = false)String email){
-        ResultScanner result = hBaseClient.selectUsers(company,email);
+    public ArrayList showUsers(@RequestParam(value = "company",required = false)String company,
+                               @RequestParam(value = "email",required = false)String email,
+                               @RequestParam(value = "identity",required = false,defaultValue = "user")String identity){
+        ResultScanner result = hBaseClient.selectUsers(company,email,identity);
         ArrayList resultArray =new ArrayList();
         Map<String, Object> resultMap = new HashMap<>();
 
@@ -86,10 +87,8 @@ public class UserController {
     public String editUserInfo(@RequestBody User user){
         String[] columns={"name","company","password"};
         String[] values ={user.getName(),user.getCompany(),user.getPassword()};
-
         try {
             hBaseClient.insertOrUpdate("user",user.getEmail(),"basic",columns,values);
-
             return "sucess";
         } catch (IOException e) {
             e.printStackTrace();
@@ -137,5 +136,51 @@ public class UserController {
             }
         }
     }
+
+    /**
+     * 统计每天新增的用户数目
+     * @return ArrayList<Integer> 前9天.....前一天 新增用户数目
+     */
+    @RequestMapping("/countUserChanged")
+ public ArrayList<Object> countUserChanged(){
+        ArrayList<Object> result =new ArrayList<>();
+
+        /**不能使用depracted 方法getDay等，获取出来的日期、月份数据等是不正确的*/
+        //获取当前时间
+        long current =System.currentTimeMillis();
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy MM dd HH mm ss");
+        Date date =new Date(current);
+        String res=simpleDateFormat.format(date);
+        int currentDay=Integer.valueOf(res.split(" ")[2]);
+        int currentMonth=Integer.valueOf(res.split(" ")[1]);
+
+        //创建时间字符串
+        String[] dateList =new String[10];
+        for(int i =9;i>=0;i--)
+        {
+            long before= current-86400000L*i;
+            Date dateBefore =new Date(before);
+            String dateBeforeRes=simpleDateFormat.format(dateBefore);
+            int beforeDay=Integer.valueOf(dateBeforeRes.split(" ")[2]);
+            int beforeMonth=Integer.valueOf(dateBeforeRes.split(" ")[1]);
+            dateList[9-i]=String.valueOf(beforeMonth)+"月"+String.valueOf(beforeDay)+"日";
+        }
+
+        //统计前十天每天的新增人数
+        int[] count=new int[10];
+        ResultScanner resultScanner = hBaseClient.selectUsers(null,null,"user");
+        for (Result rs:resultScanner){
+            Date rsDate =new Date(rs.listCells().get(0).getTimestamp());
+            String dateBeforeRes=simpleDateFormat.format(rsDate);
+            int rsDay=Integer.valueOf(dateBeforeRes.split(" ")[2]);
+            int rsMonth=Integer.valueOf(dateBeforeRes.split(" ")[1]);
+            if(rsMonth==currentMonth && (currentDay-rsDay)<10 && (currentDay-rsDay)>=0){
+                count[9-(currentDay-rsDay)]++;
+            }
+        }
+        result.add(dateList);
+        result.add(count);
+     return result;
+ }
 
 }
