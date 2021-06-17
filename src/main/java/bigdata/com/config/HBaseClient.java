@@ -219,36 +219,7 @@ public class HBaseClient {
         }
         return rs;
     }
-    /**
-     * 用于统计每天注册的用户数目
-     * @return ArrayList<ResultScanner>前一天...前10天  截止到当天的用户列表
-     * @throws IOException
-     */
-    public ArrayList<ResultScanner> countUserChanged() throws IOException {
-        Table table = connection.getTable(TableName.valueOf("user"));
-        ResultScanner rs =null;
-        ArrayList<ResultScanner> resultLIst= new ArrayList<>();
-        List<TimestampsFilter> timestampsFilterList =new ArrayList<>();
-        long current =System.currentTimeMillis();
-        for (int i=0;i<11;i++)
-        {
-            List<Long> list = new ArrayList<>();
-            list.add(current-5184000*i);
-            timestampsFilterList.add(new TimestampsFilter(list));
-        }
-        try{
-            Scan scan =new Scan();
-            for(int i =0;i<timestampsFilterList.size();i++)
-            {
-                scan.setFilter(timestampsFilterList.get(i));
-                rs = table.getScanner(scan);
-                resultLIst.add(rs);
-            }
-        }catch (IOException e){
-            e.printStackTrace();
-        }
-        return resultLIst;
-    }
+
 
     // 获取所有用户
     public ResultScanner getAllAdmin(String tableName) {

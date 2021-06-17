@@ -67,6 +67,7 @@ public class TagController {
     @RequestMapping("/showTags")
     public ArrayList showTags(@RequestBody Tag tag, @RequestParam(value = "dict",required = false,defaultValue = "false") String dict) {
         tag.setFirst("电商");
+        System.out.println(dict);
         ResultScanner result = hBaseClient.selectTags(tag);
         ArrayList resultArray =new ArrayList();
         for(Result res : result) {
@@ -82,16 +83,26 @@ public class TagController {
             if (rowKey != null) {
                 columnMap.put("id",rowKey);
             }
-            resultArray.add(columnMap);
-        }
-        result.close();
-        if(dict =="true"){
-            for(int i =0;i<resultArray.size();i++){
+            if(dict.contentEquals("false")){
+                resultArray.add(columnMap);
+            }
+            if(dict.contentEquals("true")){
                 Map<String, Object> dictMap = new HashMap<>();
-                dictMap.put("value",resultArray.get(i));
-                dictMap.put("label",resultArray.get(i));
+                dictMap.put("value",columnMap.get("forth"));
+                dictMap.put("label",columnMap.get("forth"));
+                resultArray.add(dictMap);
             }
         }
+        //去除掉四级标签list当中的重复部分
+        if(dict.contentEquals("true")){
+            for(int i =0;i<resultArray.size()-1;i++){
+                for(int j=resultArray.size()-1;j>i;j--){
+                    if(resultArray.get(i).equals(resultArray.get(j)))
+                        resultArray.remove(j);
+                }
+            }
+        }
+        result.close();
         System.out.println(resultArray.size());
         return resultArray;
     }
