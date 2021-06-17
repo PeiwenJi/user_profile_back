@@ -250,6 +250,56 @@ public class HBaseClient {
         return resultLIst;
     }
 
+    // 获取所有用户
+    public ResultScanner getAllAdmin(String tableName) {
+        Table table;
+        String value = "";
+        ResultScanner rs =null;
+        SingleColumnValueFilter scvf= new SingleColumnValueFilter(Bytes.toBytes("basic"), Bytes.toBytes("identity"),
+                CompareFilter.CompareOp.EQUAL,"admin".getBytes());
+
+        scvf.setFilterIfMissing(true);
+
+        if (StringUtils.isBlank(tableName) ) {
+            return null;
+        }
+        try {
+            table = connection.getTable(TableName.valueOf(tableName));
+            Scan scan = new Scan();
+            scan.setFilter(scvf);
+            rs = table.getScanner(scan);
+
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return rs;
+    }
+    // 获取角色权限
+    public ResultScanner getAllRole(String tableName) {
+        Table table;
+        String value = "";
+        ResultScanner rs =null;
+//        SingleColumnValueFilter scvf= new SingleColumnValueFilter(Bytes.toBytes("basic"), Bytes.toBytes("identity"),
+//                CompareFilter.CompareOp.EQUAL,"admin".getBytes());
+//
+//        scvf.setFilterIfMissing(true);
+
+        if (StringUtils.isBlank(tableName) ) {
+            return null;
+        }
+        try {
+            table = connection.getTable(TableName.valueOf(tableName));
+            Scan scan = new Scan();
+//            scan.setFilter(scvf);
+            rs = table.getScanner(scan);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return rs;
+    }
+
     public String selectOneRow(String tableName, String rowKey, String colFamily) throws IOException {
         Table table = connection.getTable(TableName.valueOf(tableName));
         Get get = new Get(rowKey.getBytes());
