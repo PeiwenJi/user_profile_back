@@ -29,7 +29,7 @@ public class TagController {
     private HBaseClient hBaseClient;
 
     /**
-     * 从tags。xlsx文件当中读取标签信息之后写入hbase
+     * 从tags.xlsx文件当中读取标签信息之后写入hbase
      */
     @RequestMapping("/initTags")
     public String  initTags(){
