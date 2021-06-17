@@ -85,11 +85,11 @@ public class UserController {
     //管理员编辑用户信息
     @RequestMapping("/editUserInfo")
     public String editUserInfo(@RequestBody User user){
-        String[] columns={"name","company","password"};
-        String[] values ={user.getName(),user.getCompany(),user.getPassword()};
+        String[] columns={"name","company","password","identity"};
+        String[] values ={user.getName(),user.getCompany(),user.getPassword(),"user"};
         try {
             hBaseClient.insertOrUpdate("user",user.getEmail(),"basic",columns,values);
-            return "sucess";
+            return "success";
         } catch (IOException e) {
             e.printStackTrace();
             return "error";

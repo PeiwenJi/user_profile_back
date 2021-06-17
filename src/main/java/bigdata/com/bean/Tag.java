@@ -1,7 +1,7 @@
 package bigdata.com.bean;
 
 public class Tag {
-    private int id;
+    private double id;
     private String first;
     private String second;
     private String third;
@@ -9,11 +9,11 @@ public class Tag {
     private String fifth;
     private String status;
 
-    public int getId() {
+    public double getId() {
         return id;
     }
 
-    public void setId(int id) {
+    public void setId(double id) {
         this.id = id;
     }
 
@@ -65,7 +65,7 @@ public class Tag {
         this.status = status;
     }
 
-    public Tag (int id, String first, String second, String third, String forth, String fifth, String status) {
+    public Tag (double id, String first, String second, String third, String forth, String fifth, String status) {
         this.id=id;
         this.first = first;
         this.second = second;
