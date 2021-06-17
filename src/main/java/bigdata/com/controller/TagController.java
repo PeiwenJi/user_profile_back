@@ -13,6 +13,7 @@ import org.apache.poi.xssf.usermodel.XSSFRow;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.annotation.Resource;
@@ -64,12 +65,12 @@ public class TagController {
      * @return
      */
     @RequestMapping("/showTags")
-    public ArrayList showTags(@RequestBody Tag tag) {
+    public ArrayList showTags(@RequestBody Tag tag, @RequestParam(value = "dict",required = false,defaultValue = "false") String dict) {
         tag.setFirst("电商");
         ResultScanner result = hBaseClient.selectTags(tag);
         ArrayList resultArray =new ArrayList();
         for(Result res : result) {
-            System.out.println(1);
+            //System.out.println(1);
             Map<String, Object> columnMap = new HashMap<>();
             String rowKey = null;
             for (Cell cell : res.listCells()) {
@@ -84,6 +85,13 @@ public class TagController {
             resultArray.add(columnMap);
         }
         result.close();
+        if(dict =="true"){
+            for(int i =0;i<resultArray.size();i++){
+                Map<String, Object> dictMap = new HashMap<>();
+                dictMap.put("value",resultArray.get(i));
+                dictMap.put("label",resultArray.get(i));
+            }
+        }
         System.out.println(resultArray.size());
         return resultArray;
     }
