@@ -20,7 +20,9 @@ import org.springframework.web.bind.annotation.RestController;
 import javax.annotation.Resource;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -76,6 +78,8 @@ public class TagController {
         }
         tag.setFirst("电商");
         //System.out.println(dict);
+//        System.out.println(dict+tag.getFirst());
+//        System.out.println(dict+tag.getStatus());
         ResultScanner result = hBaseClient.selectTags(tag);
         ArrayList resultArray =new ArrayList();
 
@@ -107,11 +111,16 @@ public class TagController {
                 dictMap.put("label",columnMap.get("forth"));
                 resultArray.add(dictMap);
             }
+            if(dict.contentEquals("tagWorld")){
+                Map<String, Object> dictMap = new HashMap<>();
+                dictMap.put("value",Double.parseDouble(columnMap.get("id").toString()));
+                dictMap.put("name",columnMap.get("fifth"));
+                resultArray.add(dictMap);
+            }
         }
 
         //规范查找到的四级标签格式
-        if(dict.contentEquals("true")){
-
+        if(dict.contentEquals("true") || dict.contentEquals("tagWorld")){
             //去除掉四级标签list当中的重复部分
             for(int i =0;i<resultArray.size()-1;i++){
                 for(int j=resultArray.size()-1;j>i;j--){
@@ -120,8 +129,10 @@ public class TagController {
                 }
             }
         }
+
+
         result.close();
-        //System.out.println(resultArray.size());
+//        System.out.println(dict+resultArray.size());
         return resultArray;
     }
 
@@ -235,4 +246,44 @@ public class TagController {
 
     }
 
+    /**
+     * 点击词云直接跳转到对应的标签区域里面
+     */
+    @RequestMapping("/getTagWorldPath")
+    public String[] getTagWorldPath(@RequestParam("id") String id){
+
+        String first = hBaseClient.getValue("tag",String.valueOf(Double.parseDouble(id)),"basic","first");
+        String second = hBaseClient.getValue("tag",String.valueOf(Double.parseDouble(id)),"basic","second");
+        String third = hBaseClient.getValue("tag",String.valueOf(Double.parseDouble(id)),"basic","third");
+        String forth = hBaseClient.getValue("tag",String.valueOf(Double.parseDouble(id)),"basic","forth");
+        String fifth = hBaseClient.getValue("tag",String.valueOf(Double.parseDouble(id)),"basic","fifth");
+        String status = hBaseClient.getValue("tag",String.valueOf(Double.parseDouble(id)),"basic","status");
+        String[] result ={first,second,third,forth,fifth,status};
+        return result;
+    }
+
+    /**
+     * 获取编辑框当前标签的历史编辑状态
+     */
+    @RequestMapping("getSelectedTagHistory")
+    public ArrayList getSelectedTagHistory(@RequestParam("id") String id)
+    {
+        //System.out.println("func :getSelectedTagHistory RequestParam id: "+id);
+        ArrayList<Map<String,String>> resultList= hBaseClient.getSelectedTagHistory(String.valueOf(Double.parseDouble(id)));
+        //System.out.println("func :getSelectedTagHistory resultList size: "+resultList.size());
+        //将timestamp规范化
+        for (int i = 0;i<resultList.size();i++){
+            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy MM dd HH mm ss");
+            Date date =new Date(Long.parseLong(resultList.get(i).get("timestamp")));
+            String res=simpleDateFormat.format(date);
+            System.out.println(res);
+            int currentDay=Integer.valueOf(res.split(" ")[2]);
+            int currentMonth=Integer.valueOf(res.split(" ")[1]);
+            int currentYear=Integer.valueOf(res.split(" ")[0]);
+            resultList.get(i).put("timestamp",currentYear +"-"+currentMonth +"-"+currentDay+" "+Integer.valueOf(res.split(" ")[3])+
+                    ":"+Integer.valueOf(res.split(" ")[4])+":"+Integer.valueOf(res.split(" ")[5]));
+        }
+
+        return resultList;
+    }
 }

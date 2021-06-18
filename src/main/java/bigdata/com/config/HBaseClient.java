@@ -13,15 +13,15 @@ import org.apache.hadoop.hbase.filter.*;
 import org.apache.hadoop.hbase.filter.CompareFilter;
 import org.apache.hadoop.hbase.filter.SingleColumnValueFilter;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.omg.CORBA.MARSHAL;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Component;
+import sun.applet.resources.MsgAppletViewer;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Scanner;
+import java.util.*;
 
 @Component
 @DependsOn("hbaseConfig")
@@ -276,6 +276,35 @@ public class HBaseClient {
         }
         return rs;
     }
+
+    //获取多个版本的信息
+    public ArrayList<Map<String,String>> getSelectedTagHistory(String rowkey) {
+        Table table;
+        String value = "";
+        ArrayList<Map<String,String>> resultList =new ArrayList();
+        try {
+            table = connection.getTable(TableName.valueOf("tag"));
+            Get g = new Get(rowkey.getBytes());
+            g.addColumn("basic".getBytes(), "status".getBytes());
+            g.setMaxVersions(10);
+            Result result = table.get(g);
+
+            List<Cell> ceList = result.listCells();
+            if (ceList != null && ceList.size() > 0) {
+                for (Cell cell : ceList) {
+                    value = Bytes.toString(cell.getValueArray(), cell.getValueOffset(), cell.getValueLength());
+                    Map<String,String> columnMap =new HashMap<>();
+                    columnMap.put("content",value);
+                    columnMap.put("timestamp",String.valueOf(cell.getTimestamp()));
+                    resultList.add(columnMap);
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return resultList;
+    }
+
 
 
     /*
