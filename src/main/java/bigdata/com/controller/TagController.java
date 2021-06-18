@@ -3,6 +3,7 @@ package bigdata.com.controller;
 
 import bigdata.com.bean.Tag;
 import bigdata.com.config.HBaseClient;
+import com.alibaba.fastjson.JSON;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
@@ -129,7 +130,7 @@ public class TagController {
     @RequestMapping("/editTagInfo")
     public String editTagInfo(@RequestBody Tag tag){
         String[] columns={"first","second","third","forth","fifth","status"};
-        System.out.println("editTagInfo"+tag.getId());
+        //System.out.println("editTagInfo"+tag.getId());
         ArrayList<Tag> brotherTag =getSameForthIdList(tag);
 
         try {
@@ -159,7 +160,6 @@ public class TagController {
         tag.setStatus("");
         ResultScanner result = hBaseClient.selectTags(tag);
         ArrayList<Tag> tagArray =new ArrayList();
-
         for(Result res : result) {
             Map<String, Object> columnMap = new HashMap<>();
             String rowKey = null;
@@ -170,13 +170,69 @@ public class TagController {
                 columnMap.put(Bytes.toString(cell.getQualifierArray(), cell.getQualifierOffset(), cell.getQualifierLength()), Bytes.toString(cell.getValueArray(), cell.getValueOffset(), cell.getValueLength()));
 
             }
-
+//            System.out.println(JSON.toJSONString(columnMap));
+//            System.out.println(rowKey);
             Tag brotherTag = new Tag(Double.parseDouble(rowKey),columnMap.get("first").toString(),columnMap.get("second").toString(),columnMap.get("third").toString()
                     ,columnMap.get("forth").toString(),columnMap.get("fifth").toString(),columnMap.get("status").toString());
             tagArray.add(brotherTag);
         }
         tag.setStatus(status);
         return tagArray;
+    }
+
+    /**
+     * 删除单个五级标签操作
+     */
+    @RequestMapping("/deleteSingleFifthTag")
+    public String deleteSingleFifthTag  (@RequestParam("tagId") String tagId){
+        System.out.println(tagId);
+        try {
+            hBaseClient.deleteRow("tag",tagId);
+            return "success";
+        } catch (IOException e) {
+            e.printStackTrace();
+            return "fail";
+        }
+
+    }
+
+    /**
+     * 管理员创建新的四级标签
+     */
+    @RequestMapping("/createNewComposedTag")
+    public String createNewComposedTag  (@RequestParam("initId") String initId,@RequestParam("first")String first,
+                                         @RequestParam("second") String second,@RequestParam("third")String third,
+                                         @RequestParam("forth") String forth,@RequestParam("fifth")String fifth){
+
+//        System.out.println(initId);
+//        System.out.println(fifth);
+        String[] fifthList = fifth.split(",");
+        //两步验证
+        //没有相同名字、相同上级的四级标签
+        Tag tag =new Tag(Double.parseDouble(initId),first,second,third,forth,"","");
+        ResultScanner sameNameForth = hBaseClient.selectTags(tag);
+        //ArrayList<String> sameNameForthFIfthList=new ArrayList<>();
+        for(Result res:sameNameForth){
+            return "name complicate";
+        }
+
+        //相同上级下相同五级标签的四级标签
+
+        for (int i =0;i<fifthList.length;i++){
+            String insertFifth= fifthList[i].split("\\(")[0];
+            double id = Double.parseDouble(initId) +(double) i +1;
+            String[] columns={"first","second","third","forth","fifth","status"};
+            String[] values={first,second,third,forth,insertFifth,"applying"};
+            try {
+                hBaseClient.insertOrUpdate("tag",String.valueOf(id),"basic",columns,values);
+            } catch (IOException e) {
+                e.printStackTrace();
+                return "something happened in creating composed tags";
+
+            }
+        }
+        return "success";
+
     }
 
 }
