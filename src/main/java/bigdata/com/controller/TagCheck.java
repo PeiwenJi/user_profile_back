@@ -1,5 +1,6 @@
 package bigdata.com.controller;
 
+import bigdata.com.bean.Tag;
 import bigdata.com.bean.UserPermission;
 import bigdata.com.config.HBaseClient;
 import org.apache.hadoop.hbase.Cell;
@@ -17,13 +18,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-public class RolePermission {
+public class TagCheck {
     @Resource
     private HBaseClient hBaseClient;
 
-    @RequestMapping("/getRoleList")
-    public ArrayList getRoleList(){
-        ResultScanner result = hBaseClient.getAllRole("tag");
+    @RequestMapping("/getUnpassedTag")
+    public ArrayList getUnpassedTag(){
+        ResultScanner result = hBaseClient.getAllUnpassedTag("tag");
 
         ArrayList resultArray =new ArrayList();
         Map<String, Object> resultMap = new HashMap<>();
@@ -39,7 +40,7 @@ public class RolePermission {
 
             if (rowKey != null) {
 //                resultMap.put(rowKey,columnMap);
-                columnMap.put("identity",rowKey);
+                columnMap.put("id",rowKey);
             }
             resultArray.add(columnMap);
         }
@@ -49,13 +50,39 @@ public class RolePermission {
         return resultArray;
     }
 
-    @RequestMapping("/editRole")
-    public String editRole(@RequestBody UserPermission userPermission) {
+    @RequestMapping("/getPassedTag")
+    public ArrayList getPassedTag(){
+        ResultScanner result = hBaseClient.getAllPassedTag("tag");
+
+        ArrayList resultArray =new ArrayList();
+        Map<String, Object> resultMap = new HashMap<>();
+        for(Result res : result) {
+            Map<String, Object> columnMap = new HashMap<>();
+            String rowKey = null;
+            for (Cell cell : res.listCells()) {
+                if (rowKey == null) {
+                    rowKey = Bytes.toString(cell.getRowArray(), cell.getRowOffset(), cell.getRowLength());
+                }
+                columnMap.put(Bytes.toString(cell.getQualifierArray(), cell.getQualifierOffset(), cell.getQualifierLength()), Bytes.toString(cell.getValueArray(), cell.getValueOffset(), cell.getValueLength()));
+            }
+
+            if (rowKey != null) {
+//                resultMap.put(rowKey,columnMap);
+                columnMap.put("id",rowKey);
+            }
+            resultArray.add(columnMap);
+        }
+        result.close();
+
+//        System.out.println(resultArray);
+        return resultArray;
+    }
+
+    @RequestMapping("/checkTag")
+    public String checkTag(@RequestBody Tag tag) {
         try {
-            hBaseClient.insertOrUpdate("userPermission",userPermission.getIdentity(),"basic","identity", userPermission.getIdentity());
-            hBaseClient.insertOrUpdate("userPermission",userPermission.getIdentity(),"basic","description", userPermission.getDescription());
-            hBaseClient.insertOrUpdate("userPermission",userPermission.getIdentity(),"basic","permission", userPermission.getPermission());
-            System.out.println("ok");
+            hBaseClient.insertOrUpdate("tag",String.valueOf(tag.getId()),"basic","status", "passed");
+             System.out.println("ok");
             return "ok";
         } catch (Exception e) {
             e.printStackTrace();
@@ -63,5 +90,4 @@ public class RolePermission {
             return "error";
         }
     }
-
 }

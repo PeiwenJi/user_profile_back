@@ -10,16 +10,18 @@ import org.apache.hadoop.hbase.TableName;
 import org.apache.hadoop.hbase.client.*;
 
 import org.apache.hadoop.hbase.filter.*;
+import org.apache.hadoop.hbase.filter.CompareFilter;
+import org.apache.hadoop.hbase.filter.SingleColumnValueFilter;
 import org.apache.hadoop.hbase.util.Bytes;
+import org.omg.CORBA.MARSHAL;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Component;
+import sun.applet.resources.MsgAppletViewer;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Scanner;
+import java.util.*;
 
 @Component
 @DependsOn("hbaseConfig")
@@ -44,6 +46,9 @@ public class HBaseClient {
         }
     }
 
+    /*
+     封装的常用函数
+     */
     public void createTable(String tableName, String... columnFamilies) throws IOException {
         TableName name = TableName.valueOf(tableName);
         boolean isExists = this.tableExists(tableName);
@@ -66,7 +71,6 @@ public class HBaseClient {
         this.insertOrUpdate(tableName, rowKey, columnFamily, new String[]{column}, new String[]{value});
     }
 
-    //修改用户信息
     public void insertOrUpdate(String tableName, String rowKey, String columnFamily, String[] columns, String[] values)
             throws IOException {
         Table table = connection.getTable(TableName.valueOf(tableName));
@@ -77,7 +81,6 @@ public class HBaseClient {
         }
     }
 
-    //删除指定行
     public void deleteRow(String tableName, String rowKey) throws IOException {
         Table table = connection.getTable(TableName.valueOf(tableName));
         Delete delete = new Delete(rowKey.getBytes());
@@ -97,6 +100,7 @@ public class HBaseClient {
         delete.addColumn(Bytes.toBytes(columnFamily), Bytes.toBytes(column));
         table.delete(delete);
     }
+
     public String getValue(String tableName, String rowkey, String family, String column) {
         Table table;
         String value = "";
@@ -130,7 +134,36 @@ public class HBaseClient {
         admin.deleteTable(name);
     }
 
-    //根据指定规则选取用户信息
+    public String selectOneRow(String tableName, String rowKey, String colFamily) throws IOException {
+        Table table = connection.getTable(TableName.valueOf(tableName));
+        Get get = new Get(rowKey.getBytes());
+        get.addColumn(colFamily.getBytes(), "name".getBytes());
+        get.addColumn(colFamily.getBytes(), "age".getBytes());
+        Result result = table.get(get);
+        table.close();
+        if (result == null) {
+            return "";
+        }
+        return new String(result.getValue(colFamily.getBytes(), "name".getBytes())) + "-" + new String(result.getValue(colFamily.getBytes(), "age".getBytes()));
+    }
+
+    public boolean tableExists(String tableName) throws IOException {
+        TableName[] tableNames = admin.listTableNames();
+        if (tableNames != null && tableNames.length > 0) {
+            for (TableName name : tableNames) {
+                if (tableName.equals(name.getNameAsString())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+
+    /*
+     刘子奕 部分
+     */
+    // 根据指定规则选取用户信息
     public ResultScanner selectUsers(String company,String email,String identity) {
 
         Table table;
@@ -138,8 +171,8 @@ public class HBaseClient {
         ResultScanner rs =null;
         List<Filter> filters =new ArrayList<>();
         filters.add(new SingleColumnValueFilter(Bytes.toBytes("basic"),    //family
-                        Bytes.toBytes("identity"),                         //列
-                        CompareFilter.CompareOp.EQUAL,identity.getBytes()));     //值
+                Bytes.toBytes("identity"),                         //列
+                CompareFilter.CompareOp.EQUAL,identity.getBytes()));     //值
         //以公司为检索条件
         if(company != null && company.length()!=0){
             filters.add(new SingleColumnValueFilter(Bytes.toBytes("basic"),    //family
@@ -170,9 +203,7 @@ public class HBaseClient {
         return rs;
     }
 
-    /**
-     * 按照指定规则选取标签
-     */
+    // 按照指定规则选取标签
     public ResultScanner selectTags(Tag tag){
         Table table;
         String tableName="tag";
@@ -220,7 +251,65 @@ public class HBaseClient {
         return rs;
     }
 
+    // 获取所有用户
+    public ResultScanner getAllUsers(String tableName) {
+        Table table;
+        String value = "";
+        ResultScanner rs =null;
+        SingleColumnValueFilter scvf= new SingleColumnValueFilter(Bytes.toBytes("basic"), Bytes.toBytes("identity"),
+                CompareFilter.CompareOp.EQUAL,"user".getBytes());
 
+        scvf.setFilterIfMissing(true);
+
+        if (StringUtils.isBlank(tableName) ) {
+            return null;
+        }
+        try {
+            table = connection.getTable(TableName.valueOf(tableName));
+            Scan scan = new Scan();
+            scan.setFilter(scvf);
+             rs = table.getScanner(scan);
+
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return rs;
+    }
+
+    //获取多个版本的信息
+    public ArrayList<Map<String,String>> getSelectedTagHistory(String rowkey) {
+        Table table;
+        String value = "";
+        ArrayList<Map<String,String>> resultList =new ArrayList();
+        try {
+            table = connection.getTable(TableName.valueOf("tag"));
+            Get g = new Get(rowkey.getBytes());
+            g.addColumn("basic".getBytes(), "status".getBytes());
+            g.setMaxVersions(10);
+            Result result = table.get(g);
+
+            List<Cell> ceList = result.listCells();
+            if (ceList != null && ceList.size() > 0) {
+                for (Cell cell : ceList) {
+                    value = Bytes.toString(cell.getValueArray(), cell.getValueOffset(), cell.getValueLength());
+                    Map<String,String> columnMap =new HashMap<>();
+                    columnMap.put("content",value);
+                    columnMap.put("timestamp",String.valueOf(cell.getTimestamp()));
+                    resultList.add(columnMap);
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return resultList;
+    }
+
+
+
+    /*
+    吉佩雯 部分
+     */
     // 获取所有用户
     public ResultScanner getAllAdmin(String tableName) {
         Table table;
@@ -246,15 +335,12 @@ public class HBaseClient {
         }
         return rs;
     }
+
     // 获取角色权限
     public ResultScanner getAllRole(String tableName) {
         Table table;
         String value = "";
         ResultScanner rs =null;
-//        SingleColumnValueFilter scvf= new SingleColumnValueFilter(Bytes.toBytes("basic"), Bytes.toBytes("identity"),
-//                CompareFilter.CompareOp.EQUAL,"admin".getBytes());
-//
-//        scvf.setFilterIfMissing(true);
 
         if (StringUtils.isBlank(tableName) ) {
             return null;
@@ -262,7 +348,6 @@ public class HBaseClient {
         try {
             table = connection.getTable(TableName.valueOf(tableName));
             Scan scan = new Scan();
-//            scan.setFilter(scvf);
             rs = table.getScanner(scan);
 
         } catch (IOException e) {
@@ -271,29 +356,54 @@ public class HBaseClient {
         return rs;
     }
 
-    public String selectOneRow(String tableName, String rowKey, String colFamily) throws IOException {
-        Table table = connection.getTable(TableName.valueOf(tableName));
-        Get get = new Get(rowKey.getBytes());
-        get.addColumn(colFamily.getBytes(), "name".getBytes());
-        get.addColumn(colFamily.getBytes(), "age".getBytes());
-        Result result = table.get(get);
-        table.close();
-        if (result == null) {
-            return "";
+    // 获取四级未通过标签
+    public ResultScanner getAllUnpassedTag(String tableName) {
+        Table table;
+        String value = "";
+        ResultScanner rs =null;
+        SingleColumnValueFilter scvf= new SingleColumnValueFilter(Bytes.toBytes("basic"), Bytes.toBytes("status"),
+                CompareFilter.CompareOp.EQUAL,"unpassed".getBytes());
+
+        scvf.setFilterIfMissing(true);
+
+        if (StringUtils.isBlank(tableName) ) {
+            return null;
         }
-        return new String(result.getValue(colFamily.getBytes(), "name".getBytes())) + "-" + new String(result.getValue(colFamily.getBytes(), "age".getBytes()));
+        try {
+            table = connection.getTable(TableName.valueOf(tableName));
+            Scan scan = new Scan();
+            scan.setFilter(scvf);
+            rs = table.getScanner(scan);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return rs;
     }
 
-    public boolean tableExists(String tableName) throws IOException {
-        TableName[] tableNames = admin.listTableNames();
-        if (tableNames != null && tableNames.length > 0) {
-            for (TableName name : tableNames) {
-                if (tableName.equals(name.getNameAsString())) {
-                    return true;
-                }
-            }
+    // 获取四级通过标签
+    public ResultScanner getAllPassedTag(String tableName) {
+        Table table;
+        String value = "";
+        ResultScanner rs =null;
+        SingleColumnValueFilter scvf= new SingleColumnValueFilter(Bytes.toBytes("basic"), Bytes.toBytes("status"),
+                CompareFilter.CompareOp.EQUAL,"passed".getBytes());
+
+        scvf.setFilterIfMissing(true);
+
+        if (StringUtils.isBlank(tableName) ) {
+            return null;
         }
-        return false;
+        try {
+            table = connection.getTable(TableName.valueOf(tableName));
+            Scan scan = new Scan();
+            scan.setFilter(scvf);
+            rs = table.getScanner(scan);
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return rs;
     }
 
 }

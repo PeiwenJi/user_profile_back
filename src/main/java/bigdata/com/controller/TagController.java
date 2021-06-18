@@ -3,6 +3,7 @@ package bigdata.com.controller;
 
 import bigdata.com.bean.Tag;
 import bigdata.com.config.HBaseClient;
+import com.alibaba.fastjson.JSON;
 import org.apache.hadoop.hbase.Cell;
 import org.apache.hadoop.hbase.client.Result;
 import org.apache.hadoop.hbase.client.ResultScanner;
@@ -19,7 +20,9 @@ import org.springframework.web.bind.annotation.RestController;
 import javax.annotation.Resource;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -75,6 +78,8 @@ public class TagController {
         }
         tag.setFirst("电商");
         //System.out.println(dict);
+//        System.out.println(dict+tag.getFirst());
+//        System.out.println(dict+tag.getStatus());
         ResultScanner result = hBaseClient.selectTags(tag);
         ArrayList resultArray =new ArrayList();
 
@@ -106,11 +111,16 @@ public class TagController {
                 dictMap.put("label",columnMap.get("forth"));
                 resultArray.add(dictMap);
             }
+            if(dict.contentEquals("tagWorld")){
+                Map<String, Object> dictMap = new HashMap<>();
+                dictMap.put("value",Double.parseDouble(columnMap.get("id").toString()));
+                dictMap.put("name",columnMap.get("fifth"));
+                resultArray.add(dictMap);
+            }
         }
 
         //规范查找到的四级标签格式
-        if(dict.contentEquals("true")){
-
+        if(dict.contentEquals("true") || dict.contentEquals("tagWorld")){
             //去除掉四级标签list当中的重复部分
             for(int i =0;i<resultArray.size()-1;i++){
                 for(int j=resultArray.size()-1;j>i;j--){
@@ -119,8 +129,10 @@ public class TagController {
                 }
             }
         }
+
+
         result.close();
-        //System.out.println(resultArray.size());
+//        System.out.println(dict+resultArray.size());
         return resultArray;
     }
 
@@ -129,7 +141,7 @@ public class TagController {
     @RequestMapping("/editTagInfo")
     public String editTagInfo(@RequestBody Tag tag){
         String[] columns={"first","second","third","forth","fifth","status"};
-        System.out.println("editTagInfo"+tag.getId());
+        //System.out.println("editTagInfo"+tag.getId());
         ArrayList<Tag> brotherTag =getSameForthIdList(tag);
 
         try {
@@ -159,7 +171,6 @@ public class TagController {
         tag.setStatus("");
         ResultScanner result = hBaseClient.selectTags(tag);
         ArrayList<Tag> tagArray =new ArrayList();
-
         for(Result res : result) {
             Map<String, Object> columnMap = new HashMap<>();
             String rowKey = null;
@@ -170,7 +181,8 @@ public class TagController {
                 columnMap.put(Bytes.toString(cell.getQualifierArray(), cell.getQualifierOffset(), cell.getQualifierLength()), Bytes.toString(cell.getValueArray(), cell.getValueOffset(), cell.getValueLength()));
 
             }
-
+//            System.out.println(JSON.toJSONString(columnMap));
+//            System.out.println(rowKey);
             Tag brotherTag = new Tag(Double.parseDouble(rowKey),columnMap.get("first").toString(),columnMap.get("second").toString(),columnMap.get("third").toString()
                     ,columnMap.get("forth").toString(),columnMap.get("fifth").toString(),columnMap.get("status").toString());
             tagArray.add(brotherTag);
@@ -179,4 +191,99 @@ public class TagController {
         return tagArray;
     }
 
+    /**
+     * 删除单个五级标签操作
+     */
+    @RequestMapping("/deleteSingleFifthTag")
+    public String deleteSingleFifthTag  (@RequestParam("tagId") String tagId){
+        System.out.println(tagId);
+        try {
+            hBaseClient.deleteRow("tag",tagId);
+            return "success";
+        } catch (IOException e) {
+            e.printStackTrace();
+            return "fail";
+        }
+
+    }
+
+    /**
+     * 管理员创建新的四级标签
+     */
+    @RequestMapping("/createNewComposedTag")
+    public String createNewComposedTag  (@RequestParam("initId") String initId,@RequestParam("first")String first,
+                                         @RequestParam("second") String second,@RequestParam("third")String third,
+                                         @RequestParam("forth") String forth,@RequestParam("fifth")String fifth){
+
+//        System.out.println(initId);
+//        System.out.println(fifth);
+        String[] fifthList = fifth.split(",");
+        //两步验证
+        //没有相同名字、相同上级的四级标签
+        Tag tag =new Tag(Double.parseDouble(initId),first,second,third,forth,"","");
+        ResultScanner sameNameForth = hBaseClient.selectTags(tag);
+        //ArrayList<String> sameNameForthFIfthList=new ArrayList<>();
+        for(Result res:sameNameForth){
+            return "name complicate";
+        }
+
+        //相同上级下相同五级标签的四级标签
+
+        for (int i =0;i<fifthList.length;i++){
+            String insertFifth= fifthList[i].split("\\(")[0];
+            double id = Double.parseDouble(initId) +(double) i +1;
+            String[] columns={"first","second","third","forth","fifth","status"};
+            String[] values={first,second,third,forth,insertFifth,"applying"};
+            try {
+                hBaseClient.insertOrUpdate("tag",String.valueOf(id),"basic",columns,values);
+            } catch (IOException e) {
+                e.printStackTrace();
+                return "something happened in creating composed tags";
+
+            }
+        }
+        return "success";
+
+    }
+
+    /**
+     * 点击词云直接跳转到对应的标签区域里面
+     */
+    @RequestMapping("/getTagWorldPath")
+    public String[] getTagWorldPath(@RequestParam("id") String id){
+
+        String first = hBaseClient.getValue("tag",String.valueOf(Double.parseDouble(id)),"basic","first");
+        String second = hBaseClient.getValue("tag",String.valueOf(Double.parseDouble(id)),"basic","second");
+        String third = hBaseClient.getValue("tag",String.valueOf(Double.parseDouble(id)),"basic","third");
+        String forth = hBaseClient.getValue("tag",String.valueOf(Double.parseDouble(id)),"basic","forth");
+        String fifth = hBaseClient.getValue("tag",String.valueOf(Double.parseDouble(id)),"basic","fifth");
+        String status = hBaseClient.getValue("tag",String.valueOf(Double.parseDouble(id)),"basic","status");
+        String[] result ={first,second,third,forth,fifth,status};
+        return result;
+    }
+
+    /**
+     * 获取编辑框当前标签的历史编辑状态
+     */
+    @RequestMapping("getSelectedTagHistory")
+    public ArrayList getSelectedTagHistory(@RequestParam("id") String id)
+    {
+        //System.out.println("func :getSelectedTagHistory RequestParam id: "+id);
+        ArrayList<Map<String,String>> resultList= hBaseClient.getSelectedTagHistory(String.valueOf(Double.parseDouble(id)));
+        //System.out.println("func :getSelectedTagHistory resultList size: "+resultList.size());
+        //将timestamp规范化
+        for (int i = 0;i<resultList.size();i++){
+            SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy MM dd HH mm ss");
+            Date date =new Date(Long.parseLong(resultList.get(i).get("timestamp")));
+            String res=simpleDateFormat.format(date);
+            System.out.println(res);
+            int currentDay=Integer.valueOf(res.split(" ")[2]);
+            int currentMonth=Integer.valueOf(res.split(" ")[1]);
+            int currentYear=Integer.valueOf(res.split(" ")[0]);
+            resultList.get(i).put("timestamp",currentYear +"-"+currentMonth +"-"+currentDay+" "+Integer.valueOf(res.split(" ")[3])+
+                    ":"+Integer.valueOf(res.split(" ")[4])+":"+Integer.valueOf(res.split(" ")[5]));
+        }
+
+        return resultList;
+    }
 }
