@@ -46,6 +46,9 @@ public class HBaseClient {
         }
     }
 
+    /*
+     封装的常用函数
+     */
     public void createTable(String tableName, String... columnFamilies) throws IOException {
         TableName name = TableName.valueOf(tableName);
         boolean isExists = this.tableExists(tableName);
@@ -98,16 +101,6 @@ public class HBaseClient {
         table.delete(delete);
     }
 
-    public void deleteTable(String tableName) throws IOException {
-        boolean isExists = this.tableExists(tableName);
-        if (!isExists) {
-            return;
-        }
-        TableName name = TableName.valueOf(tableName);
-        admin.disableTable(name);
-        admin.deleteTable(name);
-    }
-
     public String getValue(String tableName, String rowkey, String family, String column) {
         Table table;
         String value = "";
@@ -131,7 +124,46 @@ public class HBaseClient {
         return value;
     }
 
-    //根据指定规则选取用户信息
+    public void deleteTable(String tableName) throws IOException {
+        boolean isExists = this.tableExists(tableName);
+        if (!isExists) {
+            return;
+        }
+        TableName name = TableName.valueOf(tableName);
+        admin.disableTable(name);
+        admin.deleteTable(name);
+    }
+
+    public String selectOneRow(String tableName, String rowKey, String colFamily) throws IOException {
+        Table table = connection.getTable(TableName.valueOf(tableName));
+        Get get = new Get(rowKey.getBytes());
+        get.addColumn(colFamily.getBytes(), "name".getBytes());
+        get.addColumn(colFamily.getBytes(), "age".getBytes());
+        Result result = table.get(get);
+        table.close();
+        if (result == null) {
+            return "";
+        }
+        return new String(result.getValue(colFamily.getBytes(), "name".getBytes())) + "-" + new String(result.getValue(colFamily.getBytes(), "age".getBytes()));
+    }
+
+    public boolean tableExists(String tableName) throws IOException {
+        TableName[] tableNames = admin.listTableNames();
+        if (tableNames != null && tableNames.length > 0) {
+            for (TableName name : tableNames) {
+                if (tableName.equals(name.getNameAsString())) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+
+    /*
+     刘子奕 部分
+     */
+    // 根据指定规则选取用户信息
     public ResultScanner selectUsers(String company,String email,String identity) {
 
         Table table;
@@ -171,9 +203,7 @@ public class HBaseClient {
         return rs;
     }
 
-    /**
-     * 按照指定规则选取标签
-     */
+    // 按照指定规则选取标签
     public ResultScanner selectTags(Tag tag){
         Table table;
         String tableName="tag";
@@ -220,36 +250,6 @@ public class HBaseClient {
         }
         return rs;
     }
-    /**
-     * 用于统计每天注册的用户数目
-     * @return ArrayList<ResultScanner>前一天...前10天  截止到当天的用户列表
-     * @throws IOException
-     */
-    public ArrayList<ResultScanner> countUserChanged() throws IOException {
-        Table table = connection.getTable(TableName.valueOf("user"));
-        ResultScanner rs =null;
-        ArrayList<ResultScanner> resultLIst= new ArrayList<>();
-        List<TimestampsFilter> timestampsFilterList =new ArrayList<>();
-        long current =System.currentTimeMillis();
-        for (int i=0;i<11;i++)
-        {
-            List<Long> list = new ArrayList<>();
-            list.add(current-5184000*i);
-            timestampsFilterList.add(new TimestampsFilter(list));
-        }
-        try{
-            Scan scan =new Scan();
-            for(int i =0;i<timestampsFilterList.size();i++)
-            {
-                scan.setFilter(timestampsFilterList.get(i));
-                rs = table.getScanner(scan);
-                resultLIst.add(rs);
-            }
-        }catch (IOException e){
-            e.printStackTrace();
-        }
-        return resultLIst;
-    }
 
     // 获取所有用户
     public ResultScanner getAllUsers(String tableName) {
@@ -277,6 +277,10 @@ public class HBaseClient {
         return rs;
     }
 
+
+    /*
+    吉佩雯 部分
+     */
     // 获取所有用户
     public ResultScanner getAllAdmin(String tableName) {
         Table table;
@@ -308,10 +312,6 @@ public class HBaseClient {
         Table table;
         String value = "";
         ResultScanner rs =null;
-//        SingleColumnValueFilter scvf= new SingleColumnValueFilter(Bytes.toBytes("basic"), Bytes.toBytes("identity"),
-//                CompareFilter.CompareOp.EQUAL,"admin".getBytes());
-//
-//        scvf.setFilterIfMissing(true);
 
         if (StringUtils.isBlank(tableName) ) {
             return null;
@@ -319,7 +319,6 @@ public class HBaseClient {
         try {
             table = connection.getTable(TableName.valueOf(tableName));
             Scan scan = new Scan();
-//            scan.setFilter(scvf);
             rs = table.getScanner(scan);
 
         } catch (IOException e) {
@@ -376,31 +375,6 @@ public class HBaseClient {
             e.printStackTrace();
         }
         return rs;
-    }
-
-    public String selectOneRow(String tableName, String rowKey, String colFamily) throws IOException {
-        Table table = connection.getTable(TableName.valueOf(tableName));
-        Get get = new Get(rowKey.getBytes());
-        get.addColumn(colFamily.getBytes(), "name".getBytes());
-        get.addColumn(colFamily.getBytes(), "age".getBytes());
-        Result result = table.get(get);
-        table.close();
-        if (result == null) {
-            return "";
-        }
-        return new String(result.getValue(colFamily.getBytes(), "name".getBytes())) + "-" + new String(result.getValue(colFamily.getBytes(), "age".getBytes()));
-    }
-
-    public boolean tableExists(String tableName) throws IOException {
-        TableName[] tableNames = admin.listTableNames();
-        if (tableNames != null && tableNames.length > 0) {
-            for (TableName name : tableNames) {
-                if (tableName.equals(name.getNameAsString())) {
-                    return true;
-                }
-            }
-        }
-        return false;
     }
 
 }
