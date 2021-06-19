@@ -21,10 +21,7 @@ import javax.annotation.Resource;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 
 //注意需要加上这个注解
 @RestController
@@ -285,5 +282,52 @@ public class TagController {
         }
 
         return resultList;
+    }
+
+    /**
+     * 获取标签库当中的五级标签的信息
+     */
+    @RequestMapping("/getComposedTagsInfo")
+    public  ArrayList getComposedTagsInfo(){
+        Tag tag = new Tag(0,"","","组合标签","","","");
+        ResultScanner result = hBaseClient.selectTags(tag);
+        ArrayList<Map> finalList =new ArrayList<>();
+        ArrayList<Map> composedTanInfoList =new ArrayList();
+        for(Result res : result) {
+            Map<String, Object> columnMap = new HashMap<>();
+            String rowKey = null;
+            for (Cell cell : res.listCells()) {
+                if (rowKey == null) {
+                    rowKey = Bytes.toString(cell.getRowArray(), cell.getRowOffset(), cell.getRowLength());
+                }
+                columnMap.put(Bytes.toString(cell.getQualifierArray(), cell.getQualifierOffset(), cell.getQualifierLength()), Bytes.toString(cell.getValueArray(), cell.getValueOffset(), cell.getValueLength()));
+
+            }
+            composedTanInfoList.add(columnMap);
+        }
+
+        Set<String> composedForthNameSet = new HashSet<>();
+        ArrayList<String> composedForthNameList =new ArrayList<>();
+        for (int i =0;i<composedTanInfoList.size();i++) {
+            composedForthNameSet.add(composedTanInfoList.get(i).get("forth").toString());
+        }
+        List<String> simplifiedForthTagName = new ArrayList<>(composedForthNameSet);
+        for(int i =0;i<simplifiedForthTagName.size();i++){
+            String status =null;
+            Map<String,Object> oneComposedTagMap =new HashMap<>();
+            ArrayList<String> oneComposedTagFifthList =new ArrayList<>();
+            for(int j =0;j<composedTanInfoList.size();j++){
+                if(composedTanInfoList.get(j).get("forth").toString().contentEquals(simplifiedForthTagName.get(i))){
+                    status=composedTanInfoList.get(j).get("status").toString();
+                    oneComposedTagFifthList.add(composedTanInfoList.get(j).get("fifth").toString());
+                }
+            }
+            oneComposedTagMap.put("forth",simplifiedForthTagName.get(i));
+            oneComposedTagMap.put("fifth",oneComposedTagFifthList);
+            oneComposedTagMap.put("status",status);
+            finalList.add(oneComposedTagMap);
+        }
+
+        return finalList;
     }
 }
