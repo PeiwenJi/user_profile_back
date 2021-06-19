@@ -89,4 +89,32 @@ public class AdminManagement {
             return "error";
         }
     }
+
+    @RequestMapping("/searchAdmin_byEmail")
+    public ArrayList searchAdmin_byEmail(String email) {
+        ResultScanner result = hBaseClient.selectAdmin(email);
+        ArrayList resultArray =new ArrayList();
+        Map<String, Object> resultMap = new HashMap<>();
+
+        for(Result res : result) {
+            Map<String, Object> columnMap = new HashMap<>();
+            String rowKey = null;
+
+            for (Cell cell : res.listCells()) {
+                if (rowKey == null) {
+                    rowKey = Bytes.toString(cell.getRowArray(), cell.getRowOffset(), cell.getRowLength());
+                }
+                columnMap.put(Bytes.toString(cell.getQualifierArray(), cell.getQualifierOffset(), cell.getQualifierLength()), Bytes.toString(cell.getValueArray(), cell.getValueOffset(), cell.getValueLength()));
+            }
+
+            if (rowKey != null) {
+                //resultMap.put(rowKey,columnMap);
+                columnMap.put("email",rowKey);
+            }
+
+            resultArray.add(columnMap);
+        }
+        result.close();
+        return resultArray;
+    }
 }

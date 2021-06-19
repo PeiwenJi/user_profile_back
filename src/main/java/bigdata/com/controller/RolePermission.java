@@ -23,7 +23,7 @@ public class RolePermission {
 
     @RequestMapping("/getRoleList")
     public ArrayList getRoleList(){
-        ResultScanner result = hBaseClient.getAllRole("tag");
+        ResultScanner result = hBaseClient.getAllRole("userPermission");
 
         ArrayList resultArray =new ArrayList();
         Map<String, Object> resultMap = new HashMap<>();
