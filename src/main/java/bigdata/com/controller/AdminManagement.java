@@ -58,7 +58,7 @@ public class AdminManagement {
             hBaseClient.insertOrUpdate("user",user.getEmail(),"basic","email", user.getEmail());
             hBaseClient.insertOrUpdate("user",user.getEmail(),"basic","company", user.getCompany());
             hBaseClient.insertOrUpdate("user",user.getEmail(),"basic","identity", user.getIdentity());
-//            hBaseClient.createTable("userPermission","basic");
+            hBaseClient.createTable("userPermission","basic");
 //            hBaseClient.insertOrUpdate("userPermission","user","basic","id", "1");
 //            hBaseClient.insertOrUpdate("userPermission","user","basic","identity", "user");
 //            hBaseClient.insertOrUpdate("userPermission","user","basic","description", "user description");

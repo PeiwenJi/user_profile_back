@@ -53,8 +53,16 @@ public class RolePermission {
     public String editRole(@RequestBody UserPermission userPermission) {
         try {
             hBaseClient.insertOrUpdate("userPermission",userPermission.getIdentity(),"basic","identity", userPermission.getIdentity());
-            hBaseClient.insertOrUpdate("userPermission",userPermission.getIdentity(),"basic","description", userPermission.getDescription());
-            hBaseClient.insertOrUpdate("userPermission",userPermission.getIdentity(),"basic","permission", userPermission.getPermission());
+            hBaseClient.insertOrUpdate("userPermission",userPermission.getIdentity(),"basic","data_1", userPermission.getData_1());
+            hBaseClient.insertOrUpdate("userPermission",userPermission.getIdentity(),"basic","data_2", userPermission.getData_2());
+            hBaseClient.insertOrUpdate("userPermission",userPermission.getIdentity(),"basic","userSearch", userPermission.getUserSearch());
+            hBaseClient.insertOrUpdate("userPermission",userPermission.getIdentity(),"basic","userManagement_1", userPermission.getUserManagement_1());
+            hBaseClient.insertOrUpdate("userPermission",userPermission.getIdentity(),"basic","userManagement_2", userPermission.getUserManagement_2());
+            hBaseClient.insertOrUpdate("userPermission",userPermission.getIdentity(),"basic","userManagement_3", userPermission.getUserManagement_3());
+            hBaseClient.insertOrUpdate("userPermission",userPermission.getIdentity(),"basic","tagManagement_1", userPermission.getTagManagement_1());
+            hBaseClient.insertOrUpdate("userPermission",userPermission.getIdentity(),"basic","tagManagement_2", userPermission.getTagManagement_2());
+            hBaseClient.insertOrUpdate("userPermission",userPermission.getIdentity(),"basic","tagManagement_3", userPermission.getTagManagement_3());
+            hBaseClient.insertOrUpdate("userPermission",userPermission.getIdentity(),"basic","rolePermission", userPermission.getRolePermission());
             System.out.println("ok");
             return "ok";
         } catch (Exception e) {
