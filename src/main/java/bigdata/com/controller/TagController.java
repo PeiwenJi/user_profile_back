@@ -230,7 +230,7 @@ public class TagController {
             String insertFifth= fifthList[i];
             double id = Double.parseDouble(initId) +(double) i +1;
             String[] columns={"first","second","third","forth","fifth","status"};
-            String[] values={first,second,third,forth,insertFifth,"applying"};
+            String[] values={first,second,third,forth,insertFifth,"unpassed"};
             try {
                 hBaseClient.insertOrUpdate("tag",String.valueOf(id),"basic",columns,values);
             } catch (IOException e) {
@@ -273,7 +273,7 @@ public class TagController {
             SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy MM dd HH mm ss");
             Date date =new Date(Long.parseLong(resultList.get(i).get("timestamp")));
             String res=simpleDateFormat.format(date);
-            System.out.println(res);
+            //System.out.println(res);
             int currentDay=Integer.valueOf(res.split(" ")[2]);
             int currentMonth=Integer.valueOf(res.split(" ")[1]);
             int currentYear=Integer.valueOf(res.split(" ")[0]);
@@ -358,7 +358,7 @@ public class TagController {
             }
             resultArray.add(columnMap);
         }
-        System.out.println(JSON.toJSONString(resultArray));
+        //System.out.println(JSON.toJSONString(resultArray));
         return  resultArray;
     }
 
