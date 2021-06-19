@@ -310,7 +310,7 @@ public class HBaseClient {
     /*
     吉佩雯 部分
      */
-    // 获取所有用户
+    // 获取所有管理员
     public ResultScanner getAllAdmin(String tableName) {
         Table table;
         String value = "";
@@ -400,6 +400,36 @@ public class HBaseClient {
             scan.setFilter(scvf);
             rs = table.getScanner(scan);
 
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return rs;
+    }
+
+    // 根据邮箱检索管理员
+    public ResultScanner selectAdmin(String email) {
+        Table table;
+        String tableName="user";
+        ResultScanner rs =null;
+        List<Filter> filters =new ArrayList<>();
+        // 以admin为一个过滤条件
+        filters.add(new SingleColumnValueFilter(Bytes.toBytes("basic"),    //family
+                Bytes.toBytes("identity"),                         //列
+                CompareFilter.CompareOp.EQUAL,"admin".getBytes()));     //值
+
+        // 以邮箱一个过滤条件
+        filters.add(new RowFilter(CompareFilter.CompareOp.EQUAL ,
+                    new BinaryComparator(email.getBytes())));     //值
+
+        FilterList filterList =new FilterList(filters);
+        if (StringUtils.isBlank(tableName) ) {
+            return null;
+        }
+        try {
+            table = connection.getTable(TableName.valueOf(tableName));
+            Scan scan = new Scan();
+            scan.setFilter(filterList);
+            rs = table.getScanner(scan);
         } catch (IOException e) {
             e.printStackTrace();
         }
