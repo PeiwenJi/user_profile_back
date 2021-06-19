@@ -103,4 +103,12 @@ public class CustomerController {
 
         return JSON.toJSONString(valueList);
     }
+
+    //获取用户品类偏好
+    @RequestMapping("/getCateFeatured")
+    public String getCateFeatured(String id) {
+        String cateFeatured = hBaseClient.getValue("aft_basic_biz", id, "biz", "cateFeatured");
+
+        return cateFeatured;
+    }
 }

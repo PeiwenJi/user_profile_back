@@ -251,30 +251,17 @@ public class HBaseClient {
         return rs;
     }
 
-    // 获取所有用户
-    public ResultScanner getAllUsers(String tableName) {
+    // 获取满足组合标签要求的所有用户数据
+    public ResultScanner getComposedUserList(String columnName) {
         Table table;
-        String value = "";
-        ResultScanner rs =null;
-        SingleColumnValueFilter scvf= new SingleColumnValueFilter(Bytes.toBytes("basic"), Bytes.toBytes("identity"),
-                CompareFilter.CompareOp.EQUAL,"user".getBytes());
-
-        scvf.setFilterIfMissing(true);
-
-        if (StringUtils.isBlank(tableName) ) {
-            return null;
-        }
+        ResultScanner resultScanner=null;
         try {
-            table = connection.getTable(TableName.valueOf(tableName));
-            Scan scan = new Scan();
-            scan.setFilter(scvf);
-             rs = table.getScanner(scan);
-
-
+            table = connection.getTable(TableName.valueOf("aft_comb"));
+            resultScanner= table.getScanner(Bytes.toBytes(columnName));
         } catch (IOException e) {
             e.printStackTrace();
         }
-        return rs;
+        return resultScanner;
     }
 
     //获取多个版本的信息

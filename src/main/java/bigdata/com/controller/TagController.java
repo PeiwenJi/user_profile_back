@@ -215,7 +215,7 @@ public class TagController {
 //        System.out.println(initId);
 //        System.out.println(fifth);
         String[] fifthList = fifth.split(",");
-        //两步验证
+
         //没有相同名字、相同上级的四级标签
         Tag tag =new Tag(Double.parseDouble(initId),first,second,third,forth,"","");
         ResultScanner sameNameForth = hBaseClient.selectTags(tag);
@@ -227,7 +227,7 @@ public class TagController {
         //相同上级下相同五级标签的四级标签
 
         for (int i =0;i<fifthList.length;i++){
-            String insertFifth= fifthList[i].split("\\(")[0];
+            String insertFifth= fifthList[i];
             double id = Double.parseDouble(initId) +(double) i +1;
             String[] columns={"first","second","third","forth","fifth","status"};
             String[] values={first,second,third,forth,insertFifth,"applying"};
@@ -335,4 +335,31 @@ public class TagController {
 //        System.out.println(JSON.toJSONString(finalList));
         return finalList;
     }
+
+    /**
+     * 获取满足组合标签要求的用户列表信息
+     */
+    @RequestMapping("/getComposedTagsUserList")
+    public ArrayList  getComposedTagsUserList(@RequestParam(value = "composedTagName",required= false) String composedTagName){
+        Map<String,String> tagAndColumnName = new HashMap<>();
+        tagAndColumnName.put("消费能力爆表的中年男士","80sManMaxOrder");
+        tagAndColumnName.put("经常访问的狮子女士","oftenLeoFemale");
+        ResultScanner result= hBaseClient.getComposedUserList(tagAndColumnName.get(composedTagName));
+        ArrayList<Map> resultArray =new ArrayList<>();
+        for(Result res : result) {
+            Map<String, Object> columnMap = new HashMap<>();
+            String rowKey = null;
+            for (Cell cell : res.listCells()) {
+                if (rowKey == null) {
+                    rowKey = Bytes.toString(cell.getRowArray(), cell.getRowOffset(), cell.getRowLength());
+                }
+                columnMap.put(Bytes.toString(cell.getQualifierArray(), cell.getQualifierOffset(), cell.getQualifierLength()), Bytes.toString(cell.getValueArray(), cell.getValueOffset(), cell.getValueLength()));
+
+            }
+            resultArray.add(columnMap);
+        }
+        System.out.println(JSON.toJSONString(resultArray));
+        return  resultArray;
+    }
+
 }
