@@ -58,12 +58,14 @@ public class CustomerController {
         String avgOrderAmount = hBaseClient.getValue("aft_basic_biz", id, "biz", "avgOrderAmount");
         String paymentCode = hBaseClient.getValue("aft_basic_biz", id, "biz", "paymentCode");
         String maxOrderAmount = hBaseClient.getValue("aft_basic_biz", id, "biz", "maxOrderAmount");
+        String spendingPower = hBaseClient.getValue("aft_basic_biz", id, "biz", "spendingPower");
 
         List<String> consumptionList = new ArrayList<>();
         consumptionList.add(consumptionCycle);
         consumptionList.add(avgOrderAmount);
         consumptionList.add(paymentCode);
         consumptionList.add(maxOrderAmount);
+        consumptionList.add(spendingPower);
 
         return JSON.toJSONString(consumptionList);
     }
