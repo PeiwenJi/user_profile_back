@@ -36,16 +36,12 @@ public class RolePermission {
                 }
                 columnMap.put(Bytes.toString(cell.getQualifierArray(), cell.getQualifierOffset(), cell.getQualifierLength()), Bytes.toString(cell.getValueArray(), cell.getValueOffset(), cell.getValueLength()));
             }
-
-            if (rowKey != null) {
-//                resultMap.put(rowKey,columnMap);
-                columnMap.put("identity",rowKey);
-            }
-            resultArray.add(columnMap);
+            resultMap.put(rowKey,columnMap);
+            resultArray.add(resultMap);
         }
         result.close();
 
-//        System.out.println(resultArray);
+       System.out.println(resultArray);
         return resultArray;
     }
 
